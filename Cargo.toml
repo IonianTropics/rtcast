@@ -8,13 +8,3 @@ anyhow = "1.0.92"
 winit = { version = "0.30.5", features = ["rwh_05"] }
 pixels = "0.14.0"
 glam = "0.29.1"
-
-[profile.game_release]
-inherits = "release"
-opt-level = 3
-debug = false
-strip = "none"
-lto = true
-codegen-units = 1
-incremental = false
-panic = "abort"
