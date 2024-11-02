@@ -43,27 +43,43 @@ const LEVEL: [[usize; LEVEL_WIDTH]; LEVEL_HEIGHT] = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
 
+// Colors
+const TOPDOWN_LEVEL_COLOR: Vec3 = Vec3::splat(0.8);
+const TOPDOWN_GRID_COLOR: Vec3 = Vec3::splat(0.3);
+const TOPDOWN_WALL_COLOR: Vec3 = Vec3::splat(0.5);
+const TOPDOWN_RAY_COLOR: Vec3 = Vec3::new(0.97, 0.83, 0.4);
+const TOPDOWN_PLAYER_COLOR: Vec3 = Vec3::X;
+
+const NS_WALL_COLOR: Vec3 = Vec3::new(0.0, 1.0, 1.0);
+const EW_WALL_COLOR: Vec3 = Vec3::new(1.0,0.0, 1.0);
+const FLOOR_COLOR: Vec3 = Vec3::new(0.9, 0.1, 0.0);
+// Meta
+const COLOR_FADEAWAY: f32 = 3.0;
+
 // Window data
 const TITLE: &str = "Real Time Raycasting";
 
 // Screen data
-const SCREEN_WIDTH: usize = 320;
-const SCREEN_HEIGHT: usize = 240;
+const SCREEN_WIDTH: usize = 160;
+const SCREEN_HEIGHT: usize = 120;
 
 // Color data
 const COLOR_DEPTH: usize = 4;
-const COLOR_MAXVAL: usize = 255;
+const COLOR_MAXVAL: u8 = 15;
+const MAXVAL_MAX: u8 = 255; // DO NOT CHANGE
 
 // Immutable Player Data
 const SPEED: f32 = 0.03;
 const ROTATE_SPEED: f32 = 0.03;
 const RADIUS_SQUARED: f32 = 25.0;
+const WALL_PADDING: f32 = 0.3;
 const INITIAL_POSITION: Vec2 = Vec2::new(3.0, 3.0);
 const INITIAL_LOOK: Vec2 = Vec2::new(1.0, 0.0);
-const INITIAL_VIEWPORT: Vec2 = Vec2::new(0.0, 0.58);
+const INITIAL_VIEWPORT: Vec2 = Vec2::new(0.0, 0.6);
 
 // Camera Data
 // const FOV: f32 = PI / 3.0;
+const Z_FAR: f32 = 7.0;
 
 #[derive(Debug)]
 pub struct App {
@@ -106,13 +122,16 @@ impl App {
         self.look = rot * self.look;
         self.viewport = rot * self.viewport;
 
-        let new_position = self.position + velocity_sign * self.look * SPEED;
+        let delta = velocity_sign * self.look * SPEED;
+        let sign = delta.signum();
+        let new_position = self.position + delta;
+        let buffer = new_position + sign * WALL_PADDING;
 
-        if LEVEL[new_position.y as usize][self.position.x as usize] == 0 {
+        if LEVEL[buffer.y as usize][self.position.x as usize] == 0 {
             self.position.y = new_position.y;
         }
 
-        if LEVEL[self.position.y as usize][new_position.x as usize] == 0 {
+        if LEVEL[self.position.y as usize][buffer.x as usize] == 0 {
             self.position.x = new_position.x;
         }
     }
@@ -257,7 +276,7 @@ impl ApplicationHandler for App {
                     if DEBUG_TOPDOWN {
                         draw_rays(self.position, scale, ray_direction, projection_distance, frame);
                     } else {
-                        draw_column_first_person(orthographic_distance, frame, i, side);
+                        draw_column_first_person(projection_distance, frame, i, side);
                     }
                 }
 
@@ -274,7 +293,6 @@ impl ApplicationHandler for App {
 fn draw_scene_topdown(frame: &mut [u8]) {
     for j in 0..SCREEN_HEIGHT {
         for i in 0..SCREEN_WIDTH {
-            // Determine color of (i, j)
 
             let y = LEVEL_HEIGHT * j / SCREEN_HEIGHT;
             let x = LEVEL_WIDTH * i / SCREEN_WIDTH;
@@ -283,11 +301,11 @@ fn draw_scene_topdown(frame: &mut [u8]) {
             let edge_y = SCREEN_HEIGHT.checked_div(LEVEL_HEIGHT).unwrap();
 
             let color = if LEVEL[y][x] == 1 {
-                Vec3::splat(0.5)
+                TOPDOWN_WALL_COLOR
             } else if i % edge_x < 1 || j % edge_y < 1 {
-                Vec3::splat(0.3)
+                TOPDOWN_GRID_COLOR
             } else {
-                Vec3::splat(0.8)
+                TOPDOWN_LEVEL_COLOR
             };
 
             draw(frame, i, j, color);
@@ -296,8 +314,6 @@ fn draw_scene_topdown(frame: &mut [u8]) {
 }
 
 fn draw_rays(position: Vec2, scale: Vec2, ray_direction: Vec2, projection_distance: f32, frame: &mut [u8]) {
-    let color = Vec3::new(0.97, 0.83, 0.4);
-
     let start = (scale * position).as_ivec2();
     let end = (scale * (position + ray_direction.normalize() * projection_distance)).as_ivec2();
 
@@ -321,7 +337,7 @@ fn draw_rays(position: Vec2, scale: Vec2, ray_direction: Vec2, projection_distan
     let mut y = start.y;
 
     loop {
-        draw(frame, x as usize, y as usize, color);
+        draw(frame, x as usize, y as usize, TOPDOWN_RAY_COLOR);
         if x == end.x && y == end.y {
             break;
         }
@@ -342,13 +358,18 @@ fn draw_column_first_person(distance: f32, frame: &mut [u8], i: usize, side: usi
 
     let draw_start = (SCREEN_HEIGHT - wall_height) / 2;
     let draw_end = SCREEN_HEIGHT - draw_start;
+
     for j in 0..SCREEN_HEIGHT {
-        let color = if j >= draw_start && j < draw_end {
-            let bl = if side == 0 {0.7} else {1.0};
-            Vec3::splat(bl / (distance + 1.5))
+        let color = if j >= draw_start && j < draw_end && distance < Z_FAR {
+            COLOR_FADEAWAY / (distance + COLOR_FADEAWAY) * if side == 0 {
+                EW_WALL_COLOR
+            } else {
+                NS_WALL_COLOR
+            }
         } else {
-            let floor_scalar = 2.0 * j.abs_diff(SCREEN_HEIGHT / 2) as f32 / SCREEN_HEIGHT as f32;
-            ((Vec3::new(0.9, 0.1, 0.0) * floor_scalar * 0.4) * 16.0).round() / 16.0
+            let num = SCREEN_HEIGHT - 2 * j;
+            let floor_scalar = (num * num) as f32 / (SCREEN_HEIGHT * SCREEN_HEIGHT) as f32;
+            FLOOR_COLOR * floor_scalar
         };
         draw(frame, i, j, color);
     }
@@ -358,11 +379,9 @@ fn draw_player(screen_position: Vec2, frame: &mut [u8]) {
     if DEBUG_TOPDOWN {
         for j in 0..SCREEN_HEIGHT {
             for i in 0..SCREEN_WIDTH {
-                let color = Vec3::X;
-
                 if screen_position.distance_squared(Vec2::new(i as f32, j as f32)) < RADIUS_SQUARED
                 {
-                    draw(frame, i, j, color);
+                    draw(frame, i, j, TOPDOWN_PLAYER_COLOR);
                 }
             }
         }
@@ -373,6 +392,6 @@ fn draw(frame: &mut [u8], x: usize, y: usize, color: Vec3) {
     let slice = [color.x, color.y, color.z, 1.0];
     for (k, linear) in slice.iter().enumerate() {
         frame[COLOR_DEPTH * (y * SCREEN_WIDTH + x) + k] =
-            ((COLOR_MAXVAL + 1) as f32 * linear) as u8;
+            (((COLOR_MAXVAL as f32 * linear) as u8) as f32 * MAXVAL_MAX as f32 / COLOR_MAXVAL as f32) as u8;
     }
 }
