@@ -14,37 +14,41 @@ use winit::{
 const DEBUG_TOPDOWN: bool = false;
 
 // Level data
-const LEVEL_WIDTH: usize = 8;
-const LEVEL_HEIGHT: usize = 8;
+const LEVEL_WIDTH: usize = 16;
+const LEVEL_HEIGHT: usize = 12;
 const LEVEL: [[usize; LEVEL_WIDTH]; LEVEL_HEIGHT] = [
-    [1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 1, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1, 1, 1, 1],
-    [1, 1, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+    [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
 
 // Window data
 const TITLE: &str = "Real Time Raycasting";
 
 // Screen data
-const SCREEN_WIDTH: usize = 320;
-const SCREEN_HEIGHT: usize = 240;
+const SCREEN_WIDTH: usize = 640;
+const SCREEN_HEIGHT: usize = 480;
 
 // Color data
 const COLOR_DEPTH: usize = 4;
 const COLOR_MAXVAL: usize = 255;
 
 // Immutable Player Data
-const SPEED: f32 = 0.05;
-const ROTATE_SPEED: f32 = 0.07;
-const RADIUS_SQUARED: f32 = 36.0;
+const SPEED: f32 = 0.04;
+const ROTATE_SPEED: f32 = 0.06;
+const RADIUS_SQUARED: f32 = 25.0;
 const INITIAL_POSITION: Vec2 = Vec2::new(2.5, 2.5);
 const INITIAL_LOOK: Vec2 = Vec2::new(1.0, 0.0);
-const INITIAL_VIEWPORT: Vec2 = Vec2::new(0.0, 2.0);
+const INITIAL_VIEWPORT: Vec2 = Vec2::new(0.0, 0.58);
 
 // Camera Data
 // const FOV: f32 = PI / 3.0;
@@ -157,7 +161,7 @@ impl ApplicationHandler for App {
                         ..
                     },
                 ..
-            } =>  match key_code {
+            } => match key_code {
                 KeyCode::KeyA => {
                     self.key_a = state;
                 }
@@ -171,21 +175,21 @@ impl ApplicationHandler for App {
                     self.key_w = state;
                 }
                 _ => (),
-            }
+            },
             WindowEvent::RedrawRequested => {
                 self.update();
 
                 // Render
 
                 let frame = self.pixels.as_mut().unwrap().frame_mut();
+
                 let scale = Vec2::new(
                     SCREEN_WIDTH as f32 / LEVEL_WIDTH as f32,
                     SCREEN_HEIGHT as f32 / LEVEL_HEIGHT as f32,
                 );
                 let screen_position = scale * self.position;
+
                 let viewport_origin = self.position + self.look - 0.5 * self.viewport;
-                let viewport_delta = self.viewport / SCREEN_WIDTH as f32;
-                let mut viewport_coord = viewport_origin;
 
                 if DEBUG_TOPDOWN {
                     draw_scene_topdown(frame);
@@ -194,12 +198,12 @@ impl ApplicationHandler for App {
                 // Raycasting
 
                 for i in 0..SCREEN_WIDTH {
-                    let ray_direction = viewport_coord;
+                    let ray_direction = self.look + self.viewport * (2.0 * i as f32 / SCREEN_WIDTH as f32 - 1.0);
 
                     let mut map_index = self.position.as_ivec2();
                     let step = ray_direction.signum().as_ivec2();
 
-                    let t_delta = ray_direction.abs().recip();
+                    let t_delta = ray_direction.recip().abs();
 
                     let mut t_max = Vec2::new(
                         if step.x > 0 {
@@ -214,7 +218,7 @@ impl ApplicationHandler for App {
                         },
                     );
 
-                    let mut side;
+                    let mut side = 0;
 
                     loop {
                         if t_max.x < t_max.y {
@@ -231,20 +235,58 @@ impl ApplicationHandler for App {
                         }
                     }
 
-                    let ortho_dist = if side == 0 {
+                    let orthographic_distance = if side == 0 {
                         t_max.x - t_delta.x
                     } else {
                         t_max.y - t_delta.y
                     };
 
+                    let projection_distance = ray_direction.length() * orthographic_distance;
+
                     // Draw rays else 3d scene
                     if DEBUG_TOPDOWN {
-                        let _color = Vec3::new(0.97, 0.83, 0.4);
-                    } else {
-                        draw_column_first_person(ortho_dist, frame, i);
-                    }
+                        let color = Vec3::new(0.97, 0.83, 0.4);
 
-                    viewport_coord += viewport_delta;
+                        let start = screen_position.as_ivec2();
+                        let end = (scale * (self.position + ray_direction.normalize() * projection_distance)).as_ivec2();
+
+                        let delta_x = (end.x - start.x).abs();
+                        let delta_y = -(end.y - start.y).abs();
+
+                        let sign_x = if start.x < end.x {
+                            1
+                        } else {
+                            -1
+                        };
+                        let sign_y = if start.y < end.y {
+                            1
+                        } else {
+                            -1
+                        };
+
+                        let mut error = delta_x + delta_y;
+
+                        let mut x = start.x as i32;
+                        let mut y = start.y as i32;
+
+                        loop {
+                            draw(frame, x as usize, y as usize, color);
+                            if x == end.x && y == end.y {
+                                break;
+                            }
+                            let e2 = error * 2;
+                            if e2 >= delta_y {
+                                error += delta_y;
+                                x += sign_x;
+                            }
+                            if e2 <= delta_x {
+                                error += delta_x;
+                                y += sign_y;
+                            }
+                        }
+                    } else {
+                        draw_column_first_person(projection_distance, frame, i, side);
+                    }
                 }
 
                 draw_player(screen_position, frame);
@@ -270,7 +312,7 @@ fn draw_scene_topdown(frame: &mut [u8]) {
 
             let color = if LEVEL[y][x] == 1 {
                 Vec3::splat(0.5)
-            } else if i % edge_x < 3 || j % edge_y < 3 {
+            } else if i % edge_x < 2 || j % edge_y < 2 {
                 Vec3::splat(0.3)
             } else {
                 Vec3::splat(0.8)
@@ -281,14 +323,14 @@ fn draw_scene_topdown(frame: &mut [u8]) {
     }
 }
 
-fn draw_column_first_person(ortho_dist: f32, frame: &mut [u8], i: usize) {
-    let wall_height = (SCREEN_HEIGHT as f32 / (ortho_dist)) as usize;
+fn draw_column_first_person(distance: f32, frame: &mut [u8], i: usize, side: usize) {
+    let wall_height = ((SCREEN_HEIGHT as f32 / distance) as usize).min(SCREEN_HEIGHT);
 
     let draw_start = (SCREEN_HEIGHT - wall_height) / 2;
     let draw_end = SCREEN_HEIGHT - draw_start;
     for j in 0..SCREEN_HEIGHT {
         let color = if j > draw_start && j < draw_end {
-            Vec3::splat(0.7 / (ortho_dist + 1.0))
+            Vec3::splat({if side == 0 {0.7} else {1.0}} * 0.7 / (distance + 1.0))
         } else {
             let floor_scalar = 2.0 * j.abs_diff(SCREEN_HEIGHT / 2) as f32 / SCREEN_HEIGHT as f32;
             Vec3::splat(floor_scalar * 0.3)
