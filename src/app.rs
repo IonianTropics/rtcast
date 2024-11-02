@@ -14,39 +14,51 @@ use winit::{
 const DEBUG_TOPDOWN: bool = false;
 
 // Level data
-const LEVEL_WIDTH: usize = 16;
-const LEVEL_HEIGHT: usize = 12;
+const LEVEL_WIDTH: usize = 32;
+const LEVEL_HEIGHT: usize = 24;
 const LEVEL: [[usize; LEVEL_WIDTH]; LEVEL_HEIGHT] = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-    [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ];
 
 // Window data
 const TITLE: &str = "Real Time Raycasting";
 
 // Screen data
-const SCREEN_WIDTH: usize = 640;
-const SCREEN_HEIGHT: usize = 480;
+const SCREEN_WIDTH: usize = 320;
+const SCREEN_HEIGHT: usize = 240;
 
 // Color data
 const COLOR_DEPTH: usize = 4;
 const COLOR_MAXVAL: usize = 255;
 
 // Immutable Player Data
-const SPEED: f32 = 0.04;
-const ROTATE_SPEED: f32 = 0.06;
+const SPEED: f32 = 0.03;
+const ROTATE_SPEED: f32 = 0.03;
 const RADIUS_SQUARED: f32 = 25.0;
-const INITIAL_POSITION: Vec2 = Vec2::new(2.5, 2.5);
+const INITIAL_POSITION: Vec2 = Vec2::new(3.0, 3.0);
 const INITIAL_LOOK: Vec2 = Vec2::new(1.0, 0.0);
 const INITIAL_VIEWPORT: Vec2 = Vec2::new(0.0, 0.58);
 
@@ -189,8 +201,6 @@ impl ApplicationHandler for App {
                 );
                 let screen_position = scale * self.position;
 
-                let viewport_origin = self.position + self.look - 0.5 * self.viewport;
-
                 if DEBUG_TOPDOWN {
                     draw_scene_topdown(frame);
                 }
@@ -218,7 +228,7 @@ impl ApplicationHandler for App {
                         },
                     );
 
-                    let mut side = 0;
+                    let mut side;
 
                     loop {
                         if t_max.x < t_max.y {
@@ -245,47 +255,9 @@ impl ApplicationHandler for App {
 
                     // Draw rays else 3d scene
                     if DEBUG_TOPDOWN {
-                        let color = Vec3::new(0.97, 0.83, 0.4);
-
-                        let start = screen_position.as_ivec2();
-                        let end = (scale * (self.position + ray_direction.normalize() * projection_distance)).as_ivec2();
-
-                        let delta_x = (end.x - start.x).abs();
-                        let delta_y = -(end.y - start.y).abs();
-
-                        let sign_x = if start.x < end.x {
-                            1
-                        } else {
-                            -1
-                        };
-                        let sign_y = if start.y < end.y {
-                            1
-                        } else {
-                            -1
-                        };
-
-                        let mut error = delta_x + delta_y;
-
-                        let mut x = start.x as i32;
-                        let mut y = start.y as i32;
-
-                        loop {
-                            draw(frame, x as usize, y as usize, color);
-                            if x == end.x && y == end.y {
-                                break;
-                            }
-                            let e2 = error * 2;
-                            if e2 >= delta_y {
-                                error += delta_y;
-                                x += sign_x;
-                            }
-                            if e2 <= delta_x {
-                                error += delta_x;
-                                y += sign_y;
-                            }
-                        }
+                        draw_rays(self.position, scale, ray_direction, projection_distance, frame);
                     } else {
-                        draw_column_first_person(projection_distance, frame, i, side);
+                        draw_column_first_person(orthographic_distance, frame, i, side);
                     }
                 }
 
@@ -312,7 +284,7 @@ fn draw_scene_topdown(frame: &mut [u8]) {
 
             let color = if LEVEL[y][x] == 1 {
                 Vec3::splat(0.5)
-            } else if i % edge_x < 2 || j % edge_y < 2 {
+            } else if i % edge_x < 1 || j % edge_y < 1 {
                 Vec3::splat(0.3)
             } else {
                 Vec3::splat(0.8)
@@ -323,17 +295,60 @@ fn draw_scene_topdown(frame: &mut [u8]) {
     }
 }
 
+fn draw_rays(position: Vec2, scale: Vec2, ray_direction: Vec2, projection_distance: f32, frame: &mut [u8]) {
+    let color = Vec3::new(0.97, 0.83, 0.4);
+
+    let start = (scale * position).as_ivec2();
+    let end = (scale * (position + ray_direction.normalize() * projection_distance)).as_ivec2();
+
+    let delta_x = (end.x - start.x).abs();
+    let delta_y = -(end.y - start.y).abs();
+
+    let sign_x = if start.x < end.x {
+        1
+    } else {
+        -1
+    };
+    let sign_y = if start.y < end.y {
+        1
+    } else {
+        -1
+    };
+
+    let mut error = delta_x + delta_y;
+
+    let mut x = start.x;
+    let mut y = start.y;
+
+    loop {
+        draw(frame, x as usize, y as usize, color);
+        if x == end.x && y == end.y {
+            break;
+        }
+        let e2 = error * 2;
+        if e2 >= delta_y {
+            error += delta_y;
+            x += sign_x;
+        }
+        if e2 <= delta_x {
+            error += delta_x;
+            y += sign_y;
+        }
+    }
+}
+
 fn draw_column_first_person(distance: f32, frame: &mut [u8], i: usize, side: usize) {
     let wall_height = ((SCREEN_HEIGHT as f32 / distance) as usize).min(SCREEN_HEIGHT);
 
     let draw_start = (SCREEN_HEIGHT - wall_height) / 2;
     let draw_end = SCREEN_HEIGHT - draw_start;
     for j in 0..SCREEN_HEIGHT {
-        let color = if j > draw_start && j < draw_end {
-            Vec3::splat({if side == 0 {0.7} else {1.0}} * 0.7 / (distance + 1.0))
+        let color = if j >= draw_start && j < draw_end {
+            let bl = if side == 0 {0.7} else {1.0};
+            Vec3::splat(bl / (distance + 1.5))
         } else {
             let floor_scalar = 2.0 * j.abs_diff(SCREEN_HEIGHT / 2) as f32 / SCREEN_HEIGHT as f32;
-            Vec3::splat(floor_scalar * 0.3)
+            ((Vec3::new(0.9, 0.1, 0.0) * floor_scalar * 0.4) * 16.0).round() / 16.0
         };
         draw(frame, i, j, color);
     }
@@ -355,8 +370,7 @@ fn draw_player(screen_position: Vec2, frame: &mut [u8]) {
 }
 
 fn draw(frame: &mut [u8], x: usize, y: usize, color: Vec3) {
-    let mut slice = [0.0, 0.0, 0.0, 1.0];
-    color.write_to_slice(&mut slice);
+    let slice = [color.x, color.y, color.z, 1.0];
     for (k, linear) in slice.iter().enumerate() {
         frame[COLOR_DEPTH * (y * SCREEN_WIDTH + x) + k] =
             ((COLOR_MAXVAL + 1) as f32 * linear) as u8;
