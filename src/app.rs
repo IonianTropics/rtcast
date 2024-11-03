@@ -45,6 +45,7 @@ const LEVEL: [[usize; LEVEL_WIDTH]; LEVEL_HEIGHT] = [
     [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
 ];
 
+
 // Color data
 const TOPDOWN_LEVEL_COLOR: Vec3 = Vec3::splat(0.8);
 const TOPDOWN_GRID_COLOR: Vec3 = Vec3::splat(0.3);
@@ -131,7 +132,8 @@ impl App {
         self.look = rot * self.look;
         self.viewport = rot * self.viewport;
 
-        let delta = strafe_sign * strafe_rot * self.look * SPEED + velocity_sign * self.look * SPEED;
+        let delta =
+            strafe_sign * strafe_rot * self.look * SPEED + velocity_sign * self.look * SPEED;
         let sign = delta.signum();
         let new_position = self.position + delta;
         let buffer = new_position + sign * WALL_PADDING;
@@ -157,7 +159,7 @@ impl App {
 
     fn handle_keyboard_input(&mut self, event: KeyEvent, event_loop: &ActiveEventLoop) {
         if let PhysicalKey::Code(key_code) = event.physical_key {
-            match key_code  {
+            match key_code {
                 KeyCode::KeyA => self.key_a = event.state,
                 KeyCode::KeyD => self.key_d = event.state,
                 KeyCode::KeyS => self.key_s = event.state,
@@ -189,12 +191,12 @@ impl App {
         for i in 0..SCREEN_WIDTH {
             let ray_direction =
                 self.look + self.viewport * (2.0 * i as f32 / SCREEN_WIDTH as f32 - 1.0);
-    
+
             let mut map_index = self.position.as_ivec2();
             let step = ray_direction.signum().as_ivec2();
-    
+
             let t_delta = ray_direction.recip().abs();
-    
+
             let mut t_max = Vec2::new(
                 if step.x > 0 {
                     (map_index.x as f32 + 1.0 - self.position.x) * t_delta.x
@@ -207,9 +209,9 @@ impl App {
                     (self.position.y - map_index.y as f32) * t_delta.y
                 },
             );
-    
+
             let mut side;
-    
+
             loop {
                 if t_max.x < t_max.y {
                     t_max.x += t_delta.x;
@@ -224,15 +226,15 @@ impl App {
                     break;
                 }
             }
-    
+
             let orthographic_distance = if side == 0 {
                 t_max.x - t_delta.x
             } else {
                 t_max.y - t_delta.y
             };
-    
+
             let projection_distance = ray_direction.length() * orthographic_distance;
-    
+
             // Draw rays else 3d scene
             if DEBUG_TOPDOWN {
                 self.draw_rays(ray_direction, projection_distance);
@@ -241,16 +243,16 @@ impl App {
             }
         }
     }
-    
+
     fn draw_scene_topdown(&mut self) {
         for j in 0..SCREEN_HEIGHT {
             for i in 0..SCREEN_WIDTH {
                 let y = LEVEL_HEIGHT * j / SCREEN_HEIGHT;
                 let x = LEVEL_WIDTH * i / SCREEN_WIDTH;
-    
+
                 let edge_x = SCREEN_WIDTH.checked_div(LEVEL_WIDTH).unwrap();
                 let edge_y = SCREEN_HEIGHT.checked_div(LEVEL_HEIGHT).unwrap();
-    
+
                 let color = if LEVEL[y][x] == 1 {
                     TOPDOWN_WALL_COLOR
                 } else if i % edge_x < 1 || j % edge_y < 1 {
@@ -258,7 +260,7 @@ impl App {
                 } else {
                     TOPDOWN_LEVEL_COLOR
                 };
-    
+
                 self.draw_pixel(i, j, color);
             }
         }
@@ -266,19 +268,20 @@ impl App {
 
     fn draw_rays(&mut self, ray_direction: Vec2, projection_distance: f32) {
         let start = (self.screen_position).as_ivec2();
-        let end = (SCALE * (self.position + ray_direction.normalize() * projection_distance)).as_ivec2();
-    
+        let end =
+            (SCALE * (self.position + ray_direction.normalize() * projection_distance)).as_ivec2();
+
         let delta_x = (end.x - start.x).abs();
         let delta_y = -(end.y - start.y).abs();
-    
+
         let sign_x = if start.x < end.x { 1 } else { -1 };
         let sign_y = if start.y < end.y { 1 } else { -1 };
-    
+
         let mut error = delta_x + delta_y;
-    
+
         let mut x = start.x;
         let mut y = start.y;
-    
+
         loop {
             self.draw_pixel(x as usize, y as usize, TOPDOWN_RAY_COLOR);
             if x == end.x && y == end.y {
@@ -295,7 +298,7 @@ impl App {
             }
         }
     }
-    
+
     fn draw_column_first_person(&mut self, distance: f32, i: usize, side: usize) {
         let wall_height = ((SCREEN_HEIGHT as f32 / distance) as usize).min(SCREEN_HEIGHT);
 
@@ -369,7 +372,8 @@ impl ApplicationHandler for App {
             .with_min_inner_size(min_size);
         self.window = Some(event_loop.create_window(window_attributes).unwrap());
         let window = self.window.as_ref().unwrap();
-        window.set_cursor_grab(CursorGrabMode::Confined)
+        window
+            .set_cursor_grab(CursorGrabMode::Confined)
             .or_else(|_e| window.set_cursor_grab(CursorGrabMode::Locked))
             .unwrap();
         window.set_cursor_visible(false);
@@ -388,9 +392,9 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::Resized(physical_size) => self.handle_resize(physical_size),
             WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::KeyboardInput { 
-                event, ..
-            } => self.handle_keyboard_input(event, event_loop),
+            WindowEvent::KeyboardInput { event, .. } => {
+                self.handle_keyboard_input(event, event_loop)
+            }
             WindowEvent::RedrawRequested => self.redraw(),
             _ => (),
         }
