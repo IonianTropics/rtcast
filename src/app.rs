@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, time::Instant};
 
 use glam::{Mat2, Vec2, Vec3};
 use pixels::{Pixels, SurfaceTexture};
@@ -45,25 +45,26 @@ const LEVEL: [[usize; LEVEL_WIDTH]; LEVEL_HEIGHT] = [
     [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
 ];
 
-
 // Color data
 const TOPDOWN_LEVEL_COLOR: Vec3 = Vec3::splat(0.8);
 const TOPDOWN_GRID_COLOR: Vec3 = Vec3::splat(0.3);
 const TOPDOWN_WALL_COLOR: Vec3 = Vec3::splat(0.5);
 const TOPDOWN_RAY_COLOR: Vec3 = Vec3::new(0.97, 0.83, 0.4);
 const TOPDOWN_PLAYER_COLOR: Vec3 = Vec3::X;
-const NS_WALL_COLOR: Vec3 = Vec3::new(0.0, 1.0, 1.0);
-const EW_WALL_COLOR: Vec3 = Vec3::new(1.0, 0.0, 1.0);
-const FLOOR_COLOR: Vec3 = Vec3::new(0.9, 0.1, 0.0);
+const NS_WALL_COLOR: Vec3 = Vec3::new(0.3, 0.8, 0.9);
+const EW_WALL_COLOR: Vec3 = Vec3::new(0.9, 0.3, 0.8);
+const FLOOR_COLOR: Vec3 = Vec3::new(0.7, 0.2, 0.1);
+// const FLOOR_COLOR: Vec3 = Vec3::new(0.1, 0.7, 0.2);
+// const FLOOR_COLOR: Vec3 = Vec3::new(0.7, 0.7, 0.7);
 // Utility
-const COLOR_FADEAWAY: f32 = 3.0;
+const COLOR_FADEAWAY: f32 = 1.0;
 
 // Window data
 const TITLE: &str = "Real Time Raycasting";
 
 // Screen data
-const SCREEN_WIDTH: usize = 320;
-const SCREEN_HEIGHT: usize = 240;
+const SCREEN_WIDTH: usize = 640;
+const SCREEN_HEIGHT: usize = 480;
 const SCALE: Vec2 = Vec2::new(
     SCREEN_WIDTH as f32 / LEVEL_WIDTH as f32,
     SCREEN_HEIGHT as f32 / LEVEL_HEIGHT as f32,
@@ -71,35 +72,56 @@ const SCALE: Vec2 = Vec2::new(
 
 // Color meta data
 const COLOR_DEPTH: usize = 4;
-const COLOR_MAXVAL: u8 = 15;
+const COLOR_MAXVAL: u8 = 255;
 const MAXVAL_MAX: u8 = 255; // DO NOT CHANGE
 
 // Immutable Player Data
-const SPEED: f32 = 0.03;
-const ROTATE_SPEED: f32 = 0.01;
-const RADIUS: f32 = 5.0;
+const SPEED: f32 = 0.05;
+const ROTATE_SPEED: f32 = 0.0035;
+const RADIUS: f32 = 0.3;
 const WALL_PADDING: f32 = 0.25;
 const INITIAL_POSITION: Vec2 = Vec2::new(3.0, 3.0);
-const INITIAL_LOOK: Vec2 = Vec2::new(1.0, 0.0);
-const INITIAL_VIEWPORT: Vec2 = Vec2::new(0.0, 0.6);
 
 // Camera Data
 const FOV: f32 = PI / 3.0;
+const Z_NEAR: f32 = 0.05;
 const Z_FAR: f32 = 12.0;
+
+// Texture Data
+const TEXTURE_WIDTH: usize = 8;
+const TEXTURE_HEIGHT: usize = 8;
 
 #[derive(Debug)]
 pub struct App {
     window: Option<Window>,
     pixels: Option<Pixels>,
     position: Vec2,
+    rotation: f32,
     screen_position: Vec2,
-    look: Vec2,
-    viewport: Vec2,
+    frame_time: Instant,
     key_a: ElementState,
     key_d: ElementState,
     key_s: ElementState,
     key_w: ElementState,
-    cursor_delta: f32,
+    delta_cursor: f32,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            window: None,
+            pixels: None,
+            position: INITIAL_POSITION,
+            rotation: 0.0,
+            screen_position: SCALE * INITIAL_POSITION,
+            delta_cursor: 0.0,
+            frame_time: Instant::now(),
+            key_a: ElementState::Released,
+            key_d: ElementState::Released,
+            key_s: ElementState::Released,
+            key_w: ElementState::Released,
+        }
+    }
 }
 
 impl App {
@@ -108,42 +130,39 @@ impl App {
     }
 
     fn update(&mut self) {
-        let mut velocity_sign = 0.0;
+        let mut input_axis = Vec2::ZERO;
 
         if self.key_s.is_pressed() {
-            velocity_sign -= 1.0;
+            input_axis.x -= 1.0;
         }
         if self.key_w.is_pressed() {
-            velocity_sign += 1.0;
+            input_axis.x += 1.0;
         }
-
-        let mut strafe_sign = 0.0;
-
         if self.key_a.is_pressed() {
-            strafe_sign -= 1.0;
+            input_axis.y -= 1.0;
         }
         if self.key_d.is_pressed() {
-            strafe_sign += 1.0;
+            input_axis.y += 1.0;
         }
 
-        let rot = Mat2::from_angle(self.cursor_delta * ROTATE_SPEED);
-        self.cursor_delta = 0.0;
-        let strafe_rot = Mat2::from_angle(PI / 2.0);
-        self.look = rot * self.look;
-        self.viewport = rot * self.viewport;
+        input_axis = input_axis.normalize();
 
-        let delta =
-            strafe_sign * strafe_rot * self.look * SPEED + velocity_sign * self.look * SPEED;
-        let sign = delta.signum();
-        let new_position = self.position + delta;
-        let buffer = new_position + sign * WALL_PADDING;
+        self.rotation += ROTATE_SPEED * self.delta_cursor; // * delta_time;
+        self.delta_cursor = 0.0;
 
-        if LEVEL[buffer.y as usize][self.position.x as usize] == 0 {
-            self.position.y = new_position.y;
+        let rotation_matrix = Mat2::from_angle(self.rotation);
+
+        let delta_position = rotation_matrix * input_axis * SPEED; // * delta_time;
+        let sign = delta_position.signum();
+
+        let hit_box = self.position + sign * WALL_PADDING;
+
+        if LEVEL[hit_box.y as usize][self.position.x as usize] == 0 {
+            self.position.y += delta_position.y;
         }
 
-        if LEVEL[self.position.y as usize][buffer.x as usize] == 0 {
-            self.position.x = new_position.x;
+        if LEVEL[self.position.y as usize][hit_box.x as usize] == 0 {
+            self.position.x += delta_position.x;
         }
 
         self.screen_position = SCALE * self.position;
@@ -184,13 +203,17 @@ impl App {
         }
 
         self.pixels.as_ref().unwrap().render().unwrap();
+
         self.window.as_ref().unwrap().request_redraw();
     }
 
     fn raycasting(&mut self) {
+        let rotation_matrix = Mat2::from_angle(self.rotation);
+        let viewport_size = (FOV / 2.0).tan();
+        let viewport = rotation_matrix * Vec2::Y * viewport_size;
         for i in 0..SCREEN_WIDTH {
-            let ray_direction =
-                self.look + self.viewport * (2.0 * i as f32 / SCREEN_WIDTH as f32 - 1.0);
+            let camera_x = 2.0 * i as f32 / SCREEN_WIDTH as f32 - 1.0;
+            let ray_direction = rotation_matrix * Vec2::X + viewport * camera_x;
 
             let mut map_index = self.position.as_ivec2();
             let step = ray_direction.signum().as_ivec2();
@@ -235,11 +258,42 @@ impl App {
 
             let projection_distance = ray_direction.length() * orthographic_distance;
 
+            let distance = projection_distance;
+
+            let texture_index = LEVEL[map_index.y as usize][map_index.x as usize] - 1;
+            
+            let wall_x = if side == 0 {
+                self.position.y + distance * ray_direction.y
+            } else {
+                self.position.x + distance * ray_direction.x
+            }.fract();
+            let texture_x = wall_x * TEXTURE_WIDTH as f32;
+
             // Draw rays else 3d scene
             if DEBUG_TOPDOWN {
                 self.draw_rays(ray_direction, projection_distance);
             } else {
-                self.draw_column_first_person(projection_distance, i, side);
+                if DEBUG_FLAT {
+                    self.draw_flat_column_first_person(distance, i, side);
+                } else {
+                    let line_height = ((SCREEN_HEIGHT as f32 / distance) as usize).min(SCREEN_HEIGHT);
+
+                    let draw_start = (SCREEN_HEIGHT - line_height) / 2;
+                    let draw_end = SCREEN_HEIGHT - draw_start;
+
+                    for j in 0..SCREEN_HEIGHT {
+                        let color = if j >= draw_start && j < draw_end && distance < Z_FAR && distance > Z_NEAR {
+                            if side == 0 {
+                                EW_WALL_COLOR
+                            } else {
+                                NS_WALL_COLOR
+                            }
+                        } else {
+                            FLOOR_COLOR
+                        };
+                        self.draw_pixel(i, j, color);
+                    }
+                }
             }
         }
     }
@@ -299,15 +353,16 @@ impl App {
         }
     }
 
-    fn draw_column_first_person(&mut self, distance: f32, i: usize, side: usize) {
+    fn draw_flat_column_first_person(&mut self, distance: f32, i: usize, side: usize) {
         let wall_height = ((SCREEN_HEIGHT as f32 / distance) as usize).min(SCREEN_HEIGHT);
 
         let draw_start = (SCREEN_HEIGHT - wall_height) / 2;
         let draw_end = SCREEN_HEIGHT - draw_start;
+        let vignette = (i as f32 * PI / SCREEN_WIDTH as f32).sin();
 
         for j in 0..SCREEN_HEIGHT {
-            let color = if j >= draw_start && j < draw_end && distance < Z_FAR {
-                COLOR_FADEAWAY / (distance + COLOR_FADEAWAY)
+            let color = if j >= draw_start && j < draw_end && distance < Z_FAR && distance > Z_NEAR {
+                vignette * vignette * COLOR_FADEAWAY / (distance * distance + COLOR_FADEAWAY)
                     * if side == 0 {
                         EW_WALL_COLOR
                     } else {
@@ -315,7 +370,7 @@ impl App {
                     }
             } else {
                 let num = SCREEN_HEIGHT - 2 * j;
-                let floor_scalar = (num * num) as f32 / (SCREEN_HEIGHT * SCREEN_HEIGHT) as f32;
+                let floor_scalar = vignette * vignette * (num * num) as f32 / (SCREEN_HEIGHT * SCREEN_HEIGHT) as f32;
                 FLOOR_COLOR * floor_scalar
             };
             self.draw_pixel(i, j, color);
@@ -325,7 +380,9 @@ impl App {
     fn draw_player(&mut self) {
         for j in 0..SCREEN_HEIGHT {
             for i in 0..SCREEN_WIDTH {
-                if self.screen_position.distance(Vec2::new(i as f32, j as f32)) < RADIUS {
+                let world_x = i as f32 / SCALE.x;
+                let world_y = j as f32 / SCALE.y;
+                if self.position.distance(Vec2::new(world_x, world_y)) < RADIUS {
                     self.draw_pixel(i, j, TOPDOWN_PLAYER_COLOR);
                 }
             }
@@ -339,24 +396,6 @@ impl App {
             frame[COLOR_DEPTH * (y * SCREEN_WIDTH + x) + k] =
                 (((COLOR_MAXVAL as f32 * linear) as u8) as f32 * MAXVAL_MAX as f32
                     / COLOR_MAXVAL as f32) as u8;
-        }
-    }
-}
-
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            window: None,
-            pixels: None,
-            position: INITIAL_POSITION,
-            screen_position: SCALE * INITIAL_POSITION,
-            look: INITIAL_LOOK,
-            viewport: INITIAL_VIEWPORT,
-            cursor_delta: 0.0,
-            key_a: ElementState::Released,
-            key_d: ElementState::Released,
-            key_s: ElementState::Released,
-            key_w: ElementState::Released,
         }
     }
 }
@@ -381,6 +420,7 @@ impl ApplicationHandler for App {
         let surface_texture = SurfaceTexture::new(size.width, size.height, &window);
         self.pixels =
             Some(Pixels::new(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32, surface_texture).unwrap());
+        self.frame_time = Instant::now();
     }
 
     fn window_event(
@@ -395,6 +435,9 @@ impl ApplicationHandler for App {
             WindowEvent::KeyboardInput { event, .. } => {
                 self.handle_keyboard_input(event, event_loop)
             }
+            WindowEvent::AxisMotion { device_id, axis, value } => {
+                println!("{:?}: {axis} {value}", device_id)
+            }
             WindowEvent::RedrawRequested => self.redraw(),
             _ => (),
         }
@@ -407,7 +450,7 @@ impl ApplicationHandler for App {
         event: DeviceEvent,
     ) {
         if let DeviceEvent::MouseMotion { delta } = event {
-            self.cursor_delta = delta.0 as f32;
+            self.delta_cursor = delta.0 as f32;
         }
     }
 }
