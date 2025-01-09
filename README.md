@@ -4,7 +4,7 @@ Quick and dirty raycasting done in real time
 
 ## LICENSE
 
-(MIT)[https://mit-license.org/]
+[MIT](https://mit-license.org/)
 
 ## TODO
 - Walls Textures
